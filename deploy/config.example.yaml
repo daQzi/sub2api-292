@@ -322,6 +322,9 @@ gateway:
   # Off: do not harvest or inject. On: harvest in the background and inject on production requests.
   # The harvest proxy should rotate egress IPs itself (fresh CONNECT per request).
   # Credential shadow accounts retain their existing forwarding policy and are not ticket-gated.
+  # Accounts do not participate by default. In the account editor, turn on
+  # “参与 292 门票” to enable harvesting, injection and ticket gating for that account.
+  # Both global enabled and account extra.codex_turn_ticket_enabled must be true.
   openai_codex_ticket:
     enabled: false
     target_length: 292

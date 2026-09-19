@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/Wei-Shaw/sub2api/internal/config"
+	infraerrors "github.com/Wei-Shaw/sub2api/internal/pkg/errors"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/logger"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/openai"
 	"github.com/google/uuid"
@@ -23,6 +24,7 @@ import (
 )
 
 const (
+	openAICodexTicketEnabledExtraKey = "codex_turn_ticket_enabled"
 	openAICodexTicketExtraKeyPrefix  = "codex_turn_ticket:"
 	openAICodexAstraMinVersion       = "0.153.4"
 	openAICodexTicketStatePrefix     = "gAAAAA"
@@ -660,7 +662,21 @@ func IsMaskedProxyURL(raw string) bool {
 // Credential shadows do not own tickets. Keep their existing forwarding policy
 // instead of imposing a gate for a key the harvester never populates.
 func isOpenAICodexTicketAccount(account *Account) bool {
-	return account != nil && account.IsOpenAIOAuthLike() && !account.IsShadow()
+	if account == nil || !account.IsOpenAIOAuthLike() || account.IsShadow() {
+		return false
+	}
+	// Ticket handling requires an explicit account opt-in as well as the global switch.
+	enabled, _ := account.Extra[openAICodexTicketEnabledExtraKey].(bool)
+	return enabled
+}
+
+func validateOpenAICodexTicketExtra(extra map[string]any) error {
+	if value, exists := extra[openAICodexTicketEnabledExtraKey]; exists {
+		if _, ok := value.(bool); !ok {
+			return infraerrors.BadRequest("OPENAI_CODEX_TICKET_INVALID", "codex_turn_ticket_enabled must be a boolean")
+		}
+	}
+	return nil
 }
 
 // IsOpenAICodexTicketPrivateExtraKey also covers the retired account-level proxy

@@ -26,6 +26,7 @@ func ticketTestAccount(id int64) *Account {
 		ID:          id,
 		Platform:    PlatformOpenAI,
 		Type:        AccountTypeOAuth,
+		Extra:       map[string]any{openAICodexTicketEnabledExtraKey: true},
 		Credentials: map[string]any{"access_token": "tok", "chatgpt_account_id": "acc-1"},
 	}
 }
@@ -301,6 +302,7 @@ func TestLookupOpenAICodexTicket_HydratesFromExtra(t *testing.T) {
 func TestOpenAICodexTicketStatuses_ReportsRemainingTTL(t *testing.T) {
 	account := ticketTestAccount(41)
 	account.Extra = map[string]any{
+		openAICodexTicketEnabledExtraKey: true,
 		openAICodexTicketExtraKey("gpt-6-astra"): map[string]any{
 			"state":       fakeCodexTicketState(292),
 			"length":      292,
@@ -371,14 +373,14 @@ func (u *codexTicketConcurrentUpstream) Do(req *http.Request, _ string, _ int64,
 func TestRefreshOpenAICodexTickets_ConcurrentModelsPreserveAccountSnapshot(t *testing.T) {
 	account := ticketTestAccount(41)
 	account.Status = StatusActive
-	account.Extra = map[string]any{"existing": true}
+	account.Extra = map[string]any{"existing": true, openAICodexTicketEnabledExtraKey: true}
 	repo := &codexTicketRefreshRepo{accounts: []Account{*account}}
 	upstream := &codexTicketConcurrentUpstream{ready: make(chan struct{})}
 	svc := ticketTestService(t, config.OpenAICodexTicketConfig{Enabled: true, HarvestProxyURL: "socks5h://proxy.example.com:1080"}, upstream)
 	svc.accountRepo = repo
 	svc.refreshOpenAICodexTickets(context.Background())
 	require.Equal(t, int64(2), upstream.started.Load())
-	require.Equal(t, map[string]any{"existing": true}, account.Extra)
+	require.Equal(t, map[string]any{"existing": true, openAICodexTicketEnabledExtraKey: true}, account.Extra)
 	require.Len(t, repo.updates, 2)
 	for _, model := range []string{openAICodexTicketDefaultModel, openAICodexTicketDefaultSolModel} {
 		ticket := svc.lookupOpenAICodexTicket(account, model)

@@ -13,6 +13,8 @@ func TestAccountResponseCodexTicketsUsesConfiguredPolicy(t *testing.T) {
 	require.Empty(t, h.accountResponseFromService(account).CodexTurnTickets)
 	require.Empty(t, h.accountListResponseFromService(account).CodexTurnTickets)
 	h.cfg.Gateway.OpenAICodexTicket = config.OpenAICodexTicketConfig{Enabled: true, Models: []string{"configured-model"}, FailClosed: false}
+	require.Empty(t, h.accountListResponseFromService(account).CodexTurnTickets)
+	account.Extra = map[string]any{"codex_turn_ticket_enabled": true}
 	status := h.accountListResponseFromService(account).CodexTurnTickets
 	require.Len(t, status, 1)
 	require.Equal(t, "configured-model", status[0].Model)
@@ -28,6 +30,7 @@ func TestAccountResponseCodexTicketsReadsLiveSettingsAfterRestart(t *testing.T) 
 	h := &AccountHandler{cfg: cfg}
 	h.SetCodexTicketSettings(settings)
 	account := &service.Account{ID: 41, Platform: service.PlatformOpenAI, Type: service.AccountTypeSetupToken}
+	account.Extra = map[string]any{"codex_turn_ticket_enabled": true}
 	require.Len(t, h.accountListResponseFromService(account).CodexTurnTickets, 2)
 	require.False(t, cfg.Gateway.OpenAICodexTicket.Enabled)
 	repo.values[service.SettingKeyOpenAICodexTicketEnabled] = "false"

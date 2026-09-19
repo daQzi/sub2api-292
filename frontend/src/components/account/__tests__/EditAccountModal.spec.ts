@@ -776,6 +776,48 @@ describe('EditAccountModal', () => {
     })
   })
 
+  it.each(['oauth', 'setup-token'])('defaults 292 tickets off and saves explicit account opt-in for %s', async (type) => {
+    const account = { ...buildAccount(), type }
+    updateAccountMock.mockReset()
+    checkMixedChannelRiskMock.mockResolvedValue({ has_risk: false })
+    updateAccountMock.mockResolvedValue(account)
+
+    const wrapper = mountModal(account)
+    const toggle = wrapper.get('#edit-codex-ticket-enabled')
+    expect(toggle.attributes('aria-checked')).toBe('false')
+    await toggle.trigger('click')
+    await wrapper.get('form#edit-account-form').trigger('submit.prevent')
+
+    expect(updateAccountMock).toHaveBeenCalledTimes(1)
+    expect(updateAccountMock.mock.calls[0]?.[1]?.extra?.codex_turn_ticket_enabled).toBe(true)
+  })
+
+  it('loads a disabled 292 setting, can re-enable it and resets when switching accounts', async () => {
+    const account = { ...buildAccount(), type: 'oauth', extra: { codex_turn_ticket_enabled: false } }
+    updateAccountMock.mockReset()
+    checkMixedChannelRiskMock.mockResolvedValue({ has_risk: false })
+    updateAccountMock.mockResolvedValue(account)
+
+    const wrapper = mountModal(account)
+    expect(wrapper.get('#edit-codex-ticket-enabled').attributes('aria-checked')).toBe('false')
+    await wrapper.get('#edit-codex-ticket-enabled').trigger('click')
+    await wrapper.get('form#edit-account-form').trigger('submit.prevent')
+    expect(updateAccountMock.mock.calls[0]?.[1]?.extra?.codex_turn_ticket_enabled).toBe(true)
+
+    await wrapper.setProps({ account: { ...account, id: 2 } })
+    expect(wrapper.get('#edit-codex-ticket-enabled').attributes('aria-checked')).toBe('false')
+    await wrapper.setProps({ account: { ...account, id: 3, extra: {} } })
+    expect(wrapper.get('#edit-codex-ticket-enabled').attributes('aria-checked')).toBe('false')
+  })
+
+  it('does not offer the 292 account toggle for API keys or credential shadows', () => {
+    for (const account of [buildAccount(), buildOpenAISparkShadowAccount()]) {
+      const wrapper = mountModal(account)
+      expect(wrapper.find('#edit-codex-ticket-enabled').exists()).toBe(false)
+      wrapper.unmount()
+    }
+  })
+
   it('loads and submits the per-account OpenAI long-context billing toggle', async () => {
     const account = buildAccount()
     account.extra = {

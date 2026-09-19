@@ -53,6 +53,10 @@ func TestLockAndMergeAccountExtraDegradesOnUnparsableExtra(t *testing.T) {
 }
 
 func TestCodexTicketExtraIsSchedulerNeutral(t *testing.T) {
+	// Account opt-out changes eligibility and must refresh scheduler snapshots.
+	require.True(t, shouldEnqueueSchedulerOutboxForExtraUpdates(map[string]any{
+		"codex_turn_ticket_enabled": false,
+	}))
 	require.True(t, isSchedulerNeutralExtraKey("codex_turn_ticket:gpt-6-astra"))
 	// 门票续期不再开事务发 bucket 重建事件（快照仍由 UpdateExtra 单独同步）。
 	require.False(t, shouldEnqueueSchedulerOutboxForExtraUpdates(map[string]any{
